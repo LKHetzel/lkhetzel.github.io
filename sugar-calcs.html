@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sugar Calculator (Recipe Builder)</title>
+  <style>
+    :root { --bg:#0b0f14; --card:#121925; --text:#e7eef7; --muted:#9bb0c6; --line:#243244; --accent:#62d0ff; }
+    @media (prefers-color-scheme: light) {
+      :root { --bg:#f6f8fb; --card:#ffffff; --text:#0b1220; --muted:#4c647f; --line:#d7e1ee; --accent:#0077ff; }
+    }
+    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; background:var(--bg); color:var(--text); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 22px; }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .sub { margin:0 0 18px; color:var(--muted); line-height: 1.35; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px 12px; }
+    .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px 12px; }
+    label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input, select, button {
+      width:100%; box-sizing:border-box; padding:10px 10px; border-radius:10px;
+      border:1px solid var(--line); background: transparent; color: var(--text); outline:none;
+    }
+    .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top: 10px; }
+    button {
+      cursor:pointer; border:1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      font-weight: 650;
+      width: auto;
+      padding: 10px 14px;
+    }
+    button:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+    .btn-secondary { border:1px solid var(--line); background: transparent; }
+    .btn-secondary:hover { background: color-mix(in srgb, var(--muted) 10%, transparent); }
+    .out {
+      margin-top: 12px; padding: 12px; border-radius: 12px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line));
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+    .out .big { font-size: 20px; font-weight: 800; }
+    .out .small { margin-top:6px; color:var(--muted); font-size: 12px; line-height: 1.45; }
+    .mono { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
+    .hr { height:1px; background: var(--line); margin: 12px 0; }
+    a { color: color-mix(in srgb, var(--accent) 80%, white); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Sugar Calculator (Recipe Builder)</h1>
+    <p class="sub">
+      Calculate how much fermentable you need to hit a target OG. PPG values are editable—tune them to your ingredient and your results.
+      <br/>Back to: <a href="./brew-calcs.html">brew-calcs.html</a>
+    </p>
+
+    <div class="card">
+      <div class="grid3">
+        <div>
+          <label for="volume_unit">Volume Unit</label>
+          <select id="volume_unit">
+            <option value="gal" selected>Gallons</option>
+            <option value="l">Liters</option>
+          </select>
+        </div>
+        <div>
+          <label for="weight_unit">Weight Unit</label>
+          <select id="weight_unit">
+            <option value="lb" selected>Pounds (lb)</option>
+            <option value="kg">Kilograms (kg)</option>
+          </select>
+        </div>
+        <div>
+          <label for="ingredient">Fermentable</label>
+          <select id="ingredient">
+            <option value="honey" selected>Honey</option>
+            <option value="sucrose">Table Sugar (Sucrose)</option>
+            <option value="dextrose">Corn Sugar (Dextrose)</option>
+            <option value="dme">Dry Malt Extract (DME)</option>
+            <option value="lme">Liquid Malt Extract (LME)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid3" style="margin-top:12px;">
+        <div>
+          <label for="volume">Batch Volume</label>
+          <input id="volume" inputmode="decimal" value="5" />
+        </div>
+        <div>
+          <label for="target_og">Target OG</label>
+          <input id="target_og" inputmode="decimal" value="1.110" />
+        </div>
+        <div>
+          <label for="starting_sg">Starting SG (optional)</label>
+          <input id="starting_sg" inputmode="decimal" placeholder="default 1.000" />
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="grid3">
+        <div>
+          <label for="ppg">PPG (points per lb per gallon)</label>
+          <input id="ppg" inputmode="decimal" value="35" />
+        </div>
+        <div>
+          <label for="efficiency">Yield / Efficiency %</label>
+          <input id="efficiency" inputmode="decimal" value="100" />
+        </div>
+        <div>
+          <label for="target_fg">Target FG (optional, for ABV)</label>
+          <input id="target_fg" inputmode="decimal" placeholder="e.g. 1.010" />
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="calc">Calculate</button>
+        <button id="reset" type="button" class="btn-secondary">Reset</button>
+      </div>
+
+      <div class="out" id="out">
+        <div class="big">—</div>
+        <div class="small">Enter volume + target OG to compute fermentable needed.</div>
+      </div>
+
+      <div class="out" style="margin-top:10px;">
+        <div class="small">
+          <b>How it works:</b><br/>
+          Gravity points needed = <span class="mono">(targetOG − startSG) × 1000 × volume(gal)</span><br/>
+          Weight (lb) = <span class="mono">points / (PPG × (efficiency/100))</span><br/><br/>
+          Notes:
+          <ul style="margin:6px 0 0 18px; padding:0; color:var(--muted);">
+            <li>Honey varies by water content; if your actual OG is consistently high/low, tweak PPG.</li>
+            <li>Most mead is effectively ~100% “efficiency” for sugar extraction; keep this at 100 unless you have a reason.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function toNum(v) {
+    const n = Number(String(v).trim());
+    return Number.isFinite(n) ? n : NaN;
+  }
+  function fmt(n, digits=2) {
+    if (!Number.isFinite(n)) return "—";
+    return n.toFixed(digits);
+  }
+
+  const GAL_PER_L = 0.264172052;
+  const LB_PER_KG = 2.2046226218;
+
+  const ingredient = document.getElementById("ingredient");
+  const ppg = document.getElementById("ppg");
+
+  const DEFAULTS = {
+    honey: { ppg: 35 },
+    sucrose: { ppg: 46 },
+    dextrose: { ppg: 42 },
+    dme: { ppg: 44 },
+    lme: { ppg: 36 },
+    custom: { ppg: 35 }
+  };
+
+  ingredient.addEventListener("change", () => {
+    const k = ingredient.value;
+    ppg.value = String(DEFAULTS[k]?.ppg ?? 35);
+  });
+
+  document.getElementById("calc").addEventListener("click", () => {
+    const volUnit = document.getElementById("volume_unit").value;
+    const wtUnit = document.getElementById("weight_unit").value;
+
+    const volumeIn = toNum(document.getElementById("volume").value);
+    const targetOG = toNum(document.getElementById("target_og").value);
+    const startSG = toNum(document.getElementById("starting_sg").value);
+    const start = Number.isFinite(startSG) ? startSG : 1.000;
+
+    const PPG = toNum(ppg.value);
+    const effPct = toNum(document.getElementById("efficiency").value);
+    const eff = (Number.isFinite(effPct) ? effPct : 100) / 100;
+
+    const targetFG = toNum(document.getElementById("target_fg").value);
+
+    if (!Number.isFinite(volumeIn) || volumeIn <= 0 || !Number.isFinite(targetOG) || targetOG <= start || !Number.isFinite(PPG) || PPG <= 0 || !Number.isFinite(eff) || eff <= 0) {
+      document.getElementById("out").innerHTML = `<div class="big">—</div><div class="small">Check inputs. Target OG must be greater than starting SG.</div>`;
+      return;
+    }
+
+    const volumeGal = (volUnit === "l") ? (volumeIn * GAL_PER_L) : volumeIn;
+
+    const pointsNeeded = (targetOG - start) * 1000 * volumeGal; // total points
+    const poundsNeeded = pointsNeeded / (PPG * eff);
+
+    const kgNeeded = poundsNeeded / LB_PER_KG;
+
+    // ABV (optional) using standard (OG-FG)*131.25
+    let abvLine = "";
+    if (Number.isFinite(targetFG) && targetFG > 0.9 && targetFG < targetOG) {
+      const abv = (targetOG - targetFG) * 131.25;
+      abvLine = `<br/>Estimated ABV (if FG ${targetFG.toFixed(3)}): <span class="mono">${abv.toFixed(2)}%</span>`;
+    }
+
+    const outWeight = (wtUnit === "kg")
+      ? `${fmt(kgNeeded, 2)} kg`
+      : `${fmt(poundsNeeded, 2)} lb`;
+
+    const altWeight = (wtUnit === "kg")
+      ? `${fmt(poundsNeeded, 2)} lb`
+      : `${fmt(kgNeeded, 2)} kg`;
+
+    document.getElementById("out").innerHTML = `
+      <div class="big">${outWeight}</div>
+      <div class="small">
+        That’s approximately <span class="mono">${altWeight}</span>.<br/>
+        Total points needed: <span class="mono">${pointsNeeded.toFixed(0)}</span> (using start SG ${start.toFixed(3)}).<br/>
+        Using PPG <span class="mono">${PPG}</span> at <span class="mono">${(eff*100).toFixed(0)}%</span> yield.
+        ${abvLine}
+      </div>
+    `;
+  });
+
+  document.getElementById("reset").addEventListener("click", () => {
+    document.getElementById("volume_unit").value = "gal";
+    document.getElementById("weight_unit").value = "lb";
+    ingredient.value = "honey";
+    ppg.value = "35";
+    document.getElementById("efficiency").value = "100";
+    document.getElementById("volume").value = "5";
+    document.getElementById("target_og").value = "1.110";
+    document.getElementById("starting_sg").value = "";
+    document.getElementById("target_fg").value = "";
+    document.getElementById("out").innerHTML = `<div class="big">—</div><div class="small">Enter volume + target OG to compute fermentable needed.</div>`;
+  });
+</script>
+</body>
+</html>
