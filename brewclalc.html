@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Homebrew Calculators (Hydrometer + Refractometer)</title>
+  <style>
+    :root { --bg:#0b0f14; --card:#121925; --text:#e7eef7; --muted:#9bb0c6; --line:#243244; --accent:#62d0ff; }
+    @media (prefers-color-scheme: light) {
+      :root { --bg:#f6f8fb; --card:#ffffff; --text:#0b1220; --muted:#4c647f; --line:#d7e1ee; --accent:#0077ff; }
+    }
+    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+      background:var(--bg); color:var(--text); }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 22px; }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .sub { margin:0 0 18px; color:var(--muted); line-height: 1.35; }
+    .row { display:flex; flex-wrap:wrap; gap:14px; align-items: stretch; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; flex:1 1 420px; }
+    .card h2 { margin: 0 0 12px; font-size: 16px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px 12px; }
+    .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px 12px; }
+    label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input, select, button {
+      width:100%; box-sizing:border-box; padding:10px 10px; border-radius:10px;
+      border:1px solid var(--line); background: transparent; color: var(--text);
+      outline:none;
+    }
+    input::placeholder { color: color-mix(in srgb, var(--muted) 80%, transparent); }
+    .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0 0; }
+    button {
+      cursor:pointer; border:1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      font-weight: 650;
+    }
+    button:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+    .out {
+      margin-top: 12px; padding: 12px; border-radius: 12px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line));
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+    .out .big { font-size: 22px; font-weight: 800; letter-spacing: 0.2px; }
+    .out .small { margin-top:6px; color:var(--muted); font-size: 12px; line-height: 1.35; }
+    .note { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .mono { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
+    .hr { height:1px; background: var(--line); margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Homebrew Calculators</h1>
+    <p class="sub">
+      Hydrometer ABV (with optional temperature correction), plus a refractometer calculator that handles alcohol correction.
+      Refractometer: your device’s ATC usually handles temperature, but alcohol changes refraction—so you need an OG-based correction.
+    </p>
+
+    <div class="row">
+      <!-- BASIC ABV -->
+      <div class="card">
+        <h2>ABV (basic hydrometer)</h2>
+        <div class="grid">
+          <div>
+            <label for="og_basic">Original Gravity (OG)</label>
+            <input id="og_basic" inputmode="decimal" placeholder="e.g. 1.070" value="1.070" />
+          </div>
+          <div>
+            <label for="fg_basic">Final Gravity (FG)</label>
+            <input id="fg_basic" inputmode="decimal" placeholder="e.g. 1.012" value="1.012" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="calc_basic">Calculate</button>
+          <button id="reset_basic" type="button">Reset</button>
+        </div>
+
+        <div class="out" id="out_basic">
+          <div class="big">—</div>
+          <div class="small">Enter OG &amp; FG to estimate ABV.</div>
+        </div>
+
+        <div class="note">
+          Uses <span class="mono">(OG − FG) × 131.25</span>. :contentReference[oaicite:1]{index=1}
+        </div>
+      </div>
+
+      <!-- TEMP-CORRECTED HYDROMETER -->
+      <div class="card">
+        <h2>ABV (hydrometer temperature-corrected)</h2>
+
+        <div class="grid3">
+          <div>
+            <label for="temp_units">Temp Units</label>
+            <select id="temp_units">
+              <option value="F" selected>°F</option>
+              <option value="C">°C</option>
+            </select>
+          </div>
+          <div>
+            <label for="cal_temp">Hydrometer Calibration Temp</label>
+            <input id="cal_temp" inputmode="decimal" value="60" />
+          </div>
+          <div>
+            <label for="abv_factor">ABV Factor</label>
+            <select id="abv_factor">
+              <option value="131.25" selected>131.25 (standard)</option>
+              <option value="131.0">131.0 (rounded)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="grid">
+          <div>
+            <label for="og_read">OG Hydrometer Reading (uncorrected)</label>
+            <input id="og_read" inputmode="decimal" placeholder="e.g. 1.070" value="1.070" />
+          </div>
+          <div>
+            <label for="og_temp">OG Sample Temp</label>
+            <input id="og_temp" inputmode="decimal" placeholder="e.g. 75" value="75" />
+          </div>
+          <div>
+            <label for="fg_read">FG Hydrometer Reading (uncorrected)</label>
+            <input id="fg_read" inputmode="decimal" placeholder="e.g. 1.012" value="1.012" />
+          </div>
+          <div>
+            <label for="fg_temp">FG Sample Temp</label>
+            <input id="fg_temp" inputmode="decimal" placeholder="e.g. 68" value="68" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="calc_corr">Correct &amp; Calculate</button>
+          <button id="reset_corr" type="button">Reset</button>
+        </div>
+
+        <div class="out" id="out_corr">
+          <div class="big">—</div>
+          <div class="small">Enter OG/FG readings and temps to get corrected SG and ABV.</div>
+        </div>
+
+        <div class="note">
+          Temperature correction uses the standard polynomial correction ratio (common in brewing calculators). :contentReference[oaicite:2]{index=2}
+        </div>
+      </div>
+
+      <!-- REFRACTOMETER -->
+      <div class="card">
+        <h2>Refractometer (Brix) → SG / FG / ABV (alcohol-corrected)</h2>
+
+        <div class="grid3">
+          <div>
+            <label for="wcf">Wort Correction Factor (WCF)</label>
+            <input id="wcf" inputmode="decimal" value="1.04" />
+          </div>
+          <div>
+            <label for="og_brix_raw">OG (Brix) – raw refractometer</label>
+            <input id="og_brix_raw" inputmode="decimal" placeholder="e.g. 18.5" value="18.5" />
+          </div>
+          <div>
+            <label for="fg_brix_raw">Current/FG (Brix) – raw refractometer</label>
+            <input id="fg_brix_raw" inputmode="decimal" placeholder="e.g. 7.2" value="7.2" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="calc_refrac">Correct &amp; Calculate</button>
+          <button id="reset_refrac" type="button">Reset</button>
+        </div>
+
+        <div class="out" id="out_refrac">
+          <div class="big">—</div>
+          <div class="small">Enter OG/FG Brix (raw) plus WCF to estimate corrected FG (SG) and ABV.</div>
+        </div>
+
+        <div class="note">
+          WCF adjusts “raw Brix” toward actual wort Brix (typical ~1.02–1.06; many people start around 1.04). :contentReference[oaicite:3]{index=3}
+          Alcohol correction for FG uses the Sean Terrill equation. :contentReference[oaicite:4]{index=4}
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---------- Helpers ----------
+  function toNum(v) {
+    const n = Number(String(v).trim());
+    return Number.isFinite(n) ? n : NaN;
+  }
+  function clamp(n, lo, hi) { return Math.min(hi, Math.max(lo, n)); }
+  function cToF(c) { return (c * 9/5) + 32; }
+  function fmt(n, digits=3) {
+    if (!Number.isFinite(n)) return "—";
+    return n.toFixed(digits);
+  }
+  function abvFrom(og, fg, factor) { return (og - fg) * factor; }
+
+  // ---------- Hydrometer temp correction ----------
+  // corrected_sg = sg * (P(T_read) / P(T_cal)), with T in °F
+  function polyF(Tf) {
+    return 1.00130346
+      - 0.000134722124 * Tf
+      + 0.00000204052596 * Tf * Tf
+      - 0.00000000232820948 * Tf * Tf * Tf;
+  }
+  function correctedSG(measuredSG, tempValue, calTempValue, units) {
+    let Tr = tempValue, Tc = calTempValue;
+    if (units === "C") { Tr = cToF(Tr); Tc = cToF(Tc); }
+    const pr = polyF(Tr);
+    const pc = polyF(Tc);
+    return measuredSG * (pr / pc);
+  }
+
+  // ---------- Brix <-> SG ----------
+  // Common Brix->SG approximation used in many calculators:
+  // SG = 1 + (Brix / (258.6 - ((Brix/258.2)*227.1)))
+  // (Brewer's Friend provides Brix conversion tools; this is a standard homebrew approximation.) :contentReference[oaicite:5]{index=5}
+  function brixToSG(brix) {
+    return 1 + (brix / (258.6 - ((brix / 258.2) * 227.1)));
+  }
+
+  // ---------- Refractometer alcohol correction (Sean Terrill) ----------
+  // Inputs are "corrected" Brix values (i.e., after applying WCF to unfermented wort readings)
+  // FG(SG) = 1.001843
+  //          - 0.002318474*OG
+  //          - 0.000007775*OG^2
+  //          - 0.000000034*OG^3
+  //          + 0.00574*FG
+  //          + 0.00003344*FG^2
+  //          + 0.000000086*FG^3
+  // Source: Sean Terrill :contentReference[oaicite:6]{index=6}
+  function terrillFG_SG(ogBrix, fgBrix) {
+    const og2 = ogBrix*ogBrix, og3 = og2*ogBrix;
+    const fg2 = fgBrix*fgBrix, fg3 = fg2*fgBrix;
+    return 1.001843
+      - 0.002318474*ogBrix
+      - 0.000007775*og2
+      - 0.000000034*og3
+      + 0.00574*fgBrix
+      + 0.00003344*fg2
+      + 0.000000086*fg3;
+  }
+
+  // ---------- BASIC ABV ----------
+  const og_basic = document.getElementById("og_basic");
+  const fg_basic = document.getElementById("fg_basic");
+  const out_basic = document.getElementById("out_basic");
+
+  document.getElementById("calc_basic").addEventListener("click", () => {
+    const og = toNum(og_basic.value);
+    const fg = toNum(fg_basic.value);
+    if (!Number.isFinite(og) || !Number.isFinite(fg) || og < 0.9 || fg < 0.9 || og <= fg) {
+      out_basic.innerHTML = `<div class="big">—</div>
+        <div class="small">Please enter valid SG values (e.g. 1.070) and ensure OG &gt; FG.</div>`;
+      return;
+    }
+    const abv = abvFrom(og, fg, 131.25);
+    out_basic.innerHTML = `<div class="big">${fmt(abv, 2)}% ABV</div>
+      <div class="small">Computed from OG ${fmt(og, 3)} and FG ${fmt(fg, 3)}.</div>`;
+  });
+
+  document.getElementById("reset_basic").addEventListener("click", () => {
+    og_basic.value = "1.070";
+    fg_basic.value = "1.012";
+    out_basic.innerHTML = `<div class="big">—</div>
+      <div class="small">Enter OG &amp; FG to estimate ABV.</div>`;
+  });
+
+  // ---------- TEMP-CORRECTED HYDROMETER ----------
+  const temp_units = document.getElementById("temp_units");
+  const cal_temp = document.getElementById("cal_temp");
+  const abv_factor = document.getElementById("abv_factor");
+
+  const og_read = document.getElementById("og_read");
+  const og_temp = document.getElementById("og_temp");
+  const fg_read = document.getElementById("fg_read");
+  const fg_temp = document.getElementById("fg_temp");
+  const out_corr = document.getElementById("out_corr");
+
+  document.getElementById("calc_corr").addEventListener("click", () => {
+    const units = temp_units.value;
+
+    const Tc = toNum(cal_temp.value);
+    const factor = toNum(abv_factor.value);
+
+    const ogR = toNum(og_read.value);
+    const ogT = toNum(og_temp.value);
+    const fgR = toNum(fg_read.value);
+    const fgT = toNum(fg_temp.value);
+
+    const tempsOk = [Tc, ogT, fgT].every(x => Number.isFinite(x));
+    const gravOk = [ogR, fgR].every(x => Number.isFinite(x) && x > 0.9 && x < 1.3);
+
+    if (!tempsOk || !gravOk) {
+      out_corr.innerHTML = `<div class="big">—</div>
+        <div class="small">Please enter valid SG (e.g. 1.070) and temperature values.</div>`;
+      return;
+    }
+
+    const TcClamped = (units === "F") ? clamp(Tc, 32, 140) : clamp(Tc, 0, 60);
+
+    const ogC = correctedSG(ogR, ogT, TcClamped, units);
+    const fgC = correctedSG(fgR, fgT, TcClamped, units);
+
+    if (!Number.isFinite(ogC) || !Number.isFinite(fgC) || ogC <= fgC) {
+      out_corr.innerHTML = `<div class="big">—</div>
+        <div class="small">After correction, OG must still be greater than FG. Double-check inputs.</div>`;
+      return;
+    }
+
+    const abv = abvFrom(ogC, fgC, factor);
+
+    out_corr.innerHTML = `
+      <div class="big">${fmt(abv, 2)}% ABV</div>
+      <div class="small">
+        Corrected OG: <span class="mono">${fmt(ogC, 4)}</span> (from ${fmt(ogR, 3)} @ ${ogT}°${units})<br/>
+        Corrected FG: <span class="mono">${fmt(fgC, 4)}</span> (from ${fmt(fgR, 3)} @ ${fgT}°${units})<br/>
+        Hydrometer calibration: ${TcClamped}°${units}
+      </div>
+    `;
+  });
+
+  document.getElementById("reset_corr").addEventListener("click", () => {
+    temp_units.value = "F";
+    cal_temp.value = "60";
+    abv_factor.value = "131.25";
+    og_read.value = "1.070";
+    og_temp.value = "75";
+    fg_read.value = "1.012";
+    fg_temp.value = "68";
+    out_corr.innerHTML = `<div class="big">—</div>
+      <div class="small">Enter OG/FG readings and temps to get corrected SG and ABV.</div>`;
+  });
+
+  // ---------- REFRACTOMETER ----------
+  const wcf = document.getElementById("wcf");
+  const og_brix_raw = document.getElementById("og_brix_raw");
+  const fg_brix_raw = document.getElementById("fg_brix_raw");
+  const out_refrac = document.getElementById("out_refrac");
+
+  document.getElementById("calc_refrac").addEventListener("click", () => {
+    const W = toNum(wcf.value);
+    const ogRaw = toNum(og_brix_raw.value);
+    const fgRaw = toNum(fg_brix_raw.value);
+
+    if (!Number.isFinite(W) || W < 0.98 || W > 1.10 ||
+        !Number.isFinite(ogRaw) || ogRaw <= 0 ||
+        !Number.isFinite(fgRaw) || fgRaw < 0) {
+      out_refrac.innerHTML = `<div class="big">—</div>
+        <div class="small">Enter valid Brix values and a reasonable WCF (typically ~1.02–1.06).</div>`;
+      return;
+    }
+
+    // Apply WCF to approximate "actual" Brix for unfermented wort readings
+    // per common guidance: actual_brix = raw_brix / WCF :contentReference[oaicite:7]{index=7}
+    const ogBrix = ogRaw / W;
+    const fgBrix = fgRaw / W;
+
+    const ogSG = brixToSG(ogBrix);
+    const fgSG = terrillFG_SG(ogBrix, fgBrix);
+
+    if (!Number.isFinite(ogSG) || !Number.isFinite(fgSG) || ogSG <= fgSG) {
+      out_refrac.innerHTML = `<div class="big">—</div>
+        <div class="small">After correction, OG must still be greater than FG. Double-check inputs.</div>`;
+      return;
+    }
+
+    const abv = abvFrom(ogSG, fgSG, 131.25);
+    const attenuation = ((ogSG - fgSG) / (ogSG - 1)) * 100;
+
+    out_refrac.innerHTML = `
+      <div class="big">${fmt(abv, 2)}% ABV</div>
+      <div class="small">
+        WCF: <span class="mono">${fmt(W, 3)}</span><br/>
+        Corrected OG Brix: <span class="mono">${fmt(ogBrix, 2)}</span> (raw ${fmt(ogRaw, 2)} / WCF)<br/>
+        Corrected FG Brix: <span class="mono">${fmt(fgBrix, 2)}</span> (raw ${fmt(fgRaw, 2)} / WCF)<br/>
+        OG (SG): <span class="mono">${fmt(ogSG, 4)}</span> &nbsp;|&nbsp;
+        FG (SG, alcohol-corrected): <span class="mono">${fmt(fgSG, 4)}</span><br/>
+        Apparent attenuation: <span class="mono">${fmt(attenuation, 1)}%</span>
+      </div>
+    `;
+  });
+
+  document.getElementById("reset_refrac").addEventListener("click", () => {
+    wcf.value = "1.04";
+    og_brix_raw.value = "18.5";
+    fg_brix_raw.value = "7.2";
+    out_refrac.innerHTML = `<div class="big">—</div>
+      <div class="small">Enter OG/FG Brix (raw) plus WCF to estimate corrected FG (SG) and ABV.</div>`;
+  });
+</script>
+</body>
+</html>
