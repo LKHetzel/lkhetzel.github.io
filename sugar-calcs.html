@@ -3,17 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sugar Calculator (Recipe Builder)</title>
+  <title>Recipe Builder (Sugars / OG Estimator)</title>
   <style>
     :root { --bg:#0b0f14; --card:#121925; --text:#e7eef7; --muted:#9bb0c6; --line:#243244; --accent:#62d0ff; }
     @media (prefers-color-scheme: light) {
       :root { --bg:#f6f8fb; --card:#ffffff; --text:#0b1220; --muted:#4c647f; --line:#d7e1ee; --accent:#0077ff; }
     }
     body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; background:var(--bg); color:var(--text); }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 22px; }
+    .wrap { max-width: 1050px; margin: 0 auto; padding: 22px; }
     h1 { margin: 0 0 6px; font-size: 22px; }
     .sub { margin:0 0 18px; color:var(--muted); line-height: 1.35; }
     .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+    .row { display:flex; flex-wrap:wrap; gap:14px; align-items: stretch; }
+    .col { flex: 1 1 420px; min-width: 340px; }
     .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px 12px; }
     .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px 12px; }
     label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
@@ -28,6 +30,7 @@
       font-weight: 650;
       width: auto;
       padding: 10px 14px;
+      white-space: nowrap;
     }
     button:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
     .btn-secondary { border:1px solid var(--line); background: transparent; }
@@ -43,197 +46,533 @@
     .hr { height:1px; background: var(--line); margin: 12px 0; }
     a { color: color-mix(in srgb, var(--accent) 80%, white); text-decoration: none; }
     a:hover { text-decoration: underline; }
+
+    table { width:100%; border-collapse: collapse; }
+    th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align: top; }
+    th { font-size: 12px; color: var(--muted); font-weight: 750; }
+    td { font-size: 13px; }
+    .right { text-align:right; }
+    .smallmuted { color:var(--muted); font-size:12px; }
+    .tag { display:inline-block; padding:2px 8px; border:1px solid var(--line); border-radius:999px; font-size:12px; color:var(--muted); }
+    .danger { color: #ffb3b3; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Sugar Calculator (Recipe Builder)</h1>
+    <h1>Recipe Builder (OG / Sugars)</h1>
     <p class="sub">
-      Calculate how much fermentable you need to hit a target OG. PPG values are editable—tune them to your ingredient and your results.
-      <br/>Back to: <a href="./brew-calcs.html">brew-calcs.html</a>
+      Add ingredients one at a time (honey, sugar, fruit by Brix, etc.) and get an estimated OG for your final batch volume.
+      <br/>Back to: <a href="./brewcalc.html">brewcalc.html</a>
     </p>
 
-    <div class="card">
-      <div class="grid3">
-        <div>
-          <label for="volume_unit">Volume Unit</label>
-          <select id="volume_unit">
-            <option value="gal" selected>Gallons</option>
-            <option value="l">Liters</option>
-          </select>
-        </div>
-        <div>
-          <label for="weight_unit">Weight Unit</label>
-          <select id="weight_unit">
-            <option value="lb" selected>Pounds (lb)</option>
-            <option value="kg">Kilograms (kg)</option>
-          </select>
-        </div>
-        <div>
-          <label for="ingredient">Fermentable</label>
-          <select id="ingredient">
-            <option value="honey" selected>Honey</option>
-            <option value="sucrose">Table Sugar (Sucrose)</option>
-            <option value="dextrose">Corn Sugar (Dextrose)</option>
-            <option value="dme">Dry Malt Extract (DME)</option>
-            <option value="lme">Liquid Malt Extract (LME)</option>
-            <option value="custom">Custom</option>
-          </select>
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <div class="grid3">
+            <div>
+              <label for="volume_unit">Volume Unit</label>
+              <select id="volume_unit">
+                <option value="gal" selected>Gallons</option>
+                <option value="l">Liters</option>
+              </select>
+            </div>
+            <div>
+              <label for="weight_unit">Weight Unit</label>
+              <select id="weight_unit">
+                <option value="lb" selected>Pounds (lb)</option>
+                <option value="kg">Kilograms (kg)</option>
+              </select>
+            </div>
+            <div>
+              <label for="final_volume">Final Batch Volume</label>
+              <input id="final_volume" inputmode="decimal" value="5" />
+            </div>
+          </div>
+
+          <div class="grid3" style="margin-top:12px;">
+            <div>
+              <label for="start_sg">Starting SG (usually 1.000)</label>
+              <input id="start_sg" inputmode="decimal" value="1.000" />
+            </div>
+            <div>
+              <label for="target_fg">Target FG (optional, ABV estimate)</label>
+              <input id="target_fg" inputmode="decimal" placeholder="e.g. 1.010" />
+            </div>
+            <div>
+              <label for="efficiency">Overall Yield %</label>
+              <input id="efficiency" inputmode="decimal" value="100" />
+            </div>
+          </div>
+
+          <div class="out" id="summary">
+            <div class="big">—</div>
+            <div class="small">Add ingredients to build your recipe.</div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="grid3">
+            <div>
+              <label for="ing_type">Ingredient Type</label>
+              <select id="ing_type">
+                <option value="honey" selected>Honey</option>
+                <option value="sucrose">Table Sugar (Sucrose)</option>
+                <option value="dextrose">Corn Sugar (Dextrose)</option>
+                <option value="dme">Dry Malt Extract (DME)</option>
+                <option value="lme">Liquid Malt Extract (LME)</option>
+                <option value="fruit">Fruit (by weight + Brix)</option>
+                <option value="custom_ppg">Custom fermentable (PPG)</option>
+              </select>
+            </div>
+            <div>
+              <label for="ing_name">Name (optional)</label>
+              <input id="ing_name" placeholder="e.g. Orange Blossom Honey" />
+            </div>
+            <div>
+              <label for="ing_amount">Amount</label>
+              <input id="ing_amount" inputmode="decimal" value="10" />
+            </div>
+          </div>
+
+          <div class="grid3" style="margin-top:12px;">
+            <div id="field_ppg">
+              <label for="ing_ppg">PPG</label>
+              <input id="ing_ppg" inputmode="decimal" value="35" />
+              <div class="smallmuted">Honey ~35; sugar 46; DME 44; LME 36</div>
+            </div>
+            <div id="field_brix" style="display:none;">
+              <label for="ing_brix">Fruit Brix (°Bx)</label>
+              <input id="ing_brix" inputmode="decimal" value="16" />
+              <div class="smallmuted">If you don’t know: cherries ~14–20 °Bx</div>
+            </div>
+            <div>
+              <label for="ing_notes">Notes (optional)</label>
+              <input id="ing_notes" placeholder="e.g. frozen, pitted" />
+            </div>
+          </div>
+
+          <div class="controls">
+            <button id="add_ing">Add ingredient</button>
+            <button id="clear_all" type="button" class="btn-secondary">Clear recipe</button>
+          </div>
+
+          <div class="out" style="margin-top:12px;">
+            <div class="small">
+              <b>Fruit model:</b> sugar (lb) ≈ fruit_weight(lb) × (Brix/100), converted using sugar @ 46 PPG.<br/>
+              <span class="smallmuted">This is “recipe-planning accurate,” not lab-grade (fruit water/solids and extraction vary).</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="grid3" style="margin-top:12px;">
-        <div>
-          <label for="volume">Batch Volume</label>
-          <input id="volume" inputmode="decimal" value="5" />
-        </div>
-        <div>
-          <label for="target_og">Target OG</label>
-          <input id="target_og" inputmode="decimal" value="1.110" />
-        </div>
-        <div>
-          <label for="starting_sg">Starting SG (optional)</label>
-          <input id="starting_sg" inputmode="decimal" placeholder="default 1.000" />
-        </div>
-      </div>
+      <div class="col">
+        <div class="card">
+          <h2 style="margin:0 0 10px; font-size:16px;">Ingredients</h2>
+          <div class="smallmuted" style="margin-bottom:10px;">
+            Remove items to adjust the recipe. Values are converted internally to lb + gallons for math.
+          </div>
 
-      <div class="hr"></div>
+          <div style="overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th class="right">Amount</th>
+                  <th class="right">Points</th>
+                  <th class="right">PPG / Bx</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="ing_table">
+                <tr><td colspan="5" class="smallmuted">No ingredients yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
 
-      <div class="grid3">
-        <div>
-          <label for="ppg">PPG (points per lb per gallon)</label>
-          <input id="ppg" inputmode="decimal" value="35" />
-        </div>
-        <div>
-          <label for="efficiency">Yield / Efficiency %</label>
-          <input id="efficiency" inputmode="decimal" value="100" />
-        </div>
-        <div>
-          <label for="target_fg">Target FG (optional, for ABV)</label>
-          <input id="target_fg" inputmode="decimal" placeholder="e.g. 1.010" />
-        </div>
-      </div>
+          <div class="out" id="breakdown" style="margin-top:12px;">
+            <div class="big">—</div>
+            <div class="small">Breakdown will appear after you add ingredients.</div>
+          </div>
 
-      <div class="controls">
-        <button id="calc">Calculate</button>
-        <button id="reset" type="button" class="btn-secondary">Reset</button>
-      </div>
+          <div class="controls">
+            <button id="export_json" type="button" class="btn-secondary">Export JSON</button>
+            <button id="import_json" type="button" class="btn-secondary">Import JSON</button>
+          </div>
+          <textarea id="json_box" style="width:100%; margin-top:10px; min-height:120px; border-radius:12px; padding:10px; border:1px solid var(--line); background:transparent; color:var(--text);" placeholder="(Optional) Copy/paste recipe JSON here for export/import..."></textarea>
 
-      <div class="out" id="out">
-        <div class="big">—</div>
-        <div class="small">Enter volume + target OG to compute fermentable needed.</div>
-      </div>
-
-      <div class="out" style="margin-top:10px;">
-        <div class="small">
-          <b>How it works:</b><br/>
-          Gravity points needed = <span class="mono">(targetOG − startSG) × 1000 × volume(gal)</span><br/>
-          Weight (lb) = <span class="mono">points / (PPG × (efficiency/100))</span><br/><br/>
-          Notes:
-          <ul style="margin:6px 0 0 18px; padding:0; color:var(--muted);">
-            <li>Honey varies by water content; if your actual OG is consistently high/low, tweak PPG.</li>
-            <li>Most mead is effectively ~100% “efficiency” for sugar extraction; keep this at 100 unless you have a reason.</li>
-          </ul>
+          <div class="smallmuted" style="margin-top:10px;">
+            Tip: Export lets you save/share your ingredient list without a backend.
+          </div>
         </div>
       </div>
     </div>
   </div>
 
 <script>
+  // ---------- Units / constants ----------
+  const GAL_PER_L = 0.264172052;
+  const LB_PER_KG = 2.2046226218;
+
+  // "Sugar equivalent" PPG used for fruit sugar conversion
+  const SUGAR_PPG = 46;
+
   function toNum(v) {
     const n = Number(String(v).trim());
     return Number.isFinite(n) ? n : NaN;
   }
-  function fmt(n, digits=2) {
-    if (!Number.isFinite(n)) return "—";
-    return n.toFixed(digits);
+  function fmt(n, d=2) { return Number.isFinite(n) ? n.toFixed(d) : "—"; }
+
+  function volumeToGallons(v, unit) {
+    return unit === "l" ? (v * GAL_PER_L) : v;
+  }
+  function weightToPounds(w, unit) {
+    return unit === "kg" ? (w * LB_PER_KG) : w;
+  }
+  function poundsToDisplay(lb, unit) {
+    return unit === "kg" ? (lb / LB_PER_KG) : lb;
+  }
+  function gallonsToDisplay(gal, unit) {
+    return unit === "l" ? (gal / GAL_PER_L) : gal;
   }
 
-  const GAL_PER_L = 0.264172052;
-  const LB_PER_KG = 2.2046226218;
-
-  const ingredient = document.getElementById("ingredient");
-  const ppg = document.getElementById("ppg");
-
-  const DEFAULTS = {
-    honey: { ppg: 35 },
-    sucrose: { ppg: 46 },
-    dextrose: { ppg: 42 },
-    dme: { ppg: 44 },
-    lme: { ppg: 36 },
-    custom: { ppg: 35 }
+  // ---------- Ingredient presets ----------
+  const TYPE_PRESETS = {
+    honey:   { label: "Honey", ppg: 35, usesBrix: false },
+    sucrose: { label: "Table Sugar", ppg: 46, usesBrix: false },
+    dextrose:{ label: "Dextrose", ppg: 42, usesBrix: false },
+    dme:     { label: "DME", ppg: 44, usesBrix: false },
+    lme:     { label: "LME", ppg: 36, usesBrix: false },
+    fruit:   { label: "Fruit (Brix)", ppg: null, usesBrix: true },
+    custom_ppg: { label: "Custom (PPG)", ppg: 35, usesBrix: false },
   };
 
-  ingredient.addEventListener("change", () => {
-    const k = ingredient.value;
-    ppg.value = String(DEFAULTS[k]?.ppg ?? 35);
-  });
+  // ---------- State ----------
+  let ingredients = [];
 
-  document.getElementById("calc").addEventListener("click", () => {
-    const volUnit = document.getElementById("volume_unit").value;
-    const wtUnit = document.getElementById("weight_unit").value;
+  // ---------- DOM ----------
+  const volumeUnitEl = document.getElementById("volume_unit");
+  const weightUnitEl = document.getElementById("weight_unit");
+  const finalVolEl = document.getElementById("final_volume");
+  const startSgEl = document.getElementById("start_sg");
+  const targetFgEl = document.getElementById("target_fg");
+  const effEl = document.getElementById("efficiency");
 
-    const volumeIn = toNum(document.getElementById("volume").value);
-    const targetOG = toNum(document.getElementById("target_og").value);
-    const startSG = toNum(document.getElementById("starting_sg").value);
+  const typeEl = document.getElementById("ing_type");
+  const nameEl = document.getElementById("ing_name");
+  const amountEl = document.getElementById("ing_amount");
+  const ppgEl = document.getElementById("ing_ppg");
+  const brixEl = document.getElementById("ing_brix");
+  const notesEl = document.getElementById("ing_notes");
+  const fieldPPG = document.getElementById("field_ppg");
+  const fieldBrix = document.getElementById("field_brix");
+
+  const summaryEl = document.getElementById("summary");
+  const breakdownEl = document.getElementById("breakdown");
+  const tableEl = document.getElementById("ing_table");
+  const jsonBox = document.getElementById("json_box");
+
+  function updateTypeUI() {
+    const t = typeEl.value;
+    const preset = TYPE_PRESETS[t];
+    if (!preset) return;
+
+    if (preset.usesBrix) {
+      fieldBrix.style.display = "";
+      fieldPPG.style.display = "none";
+      // default fruit Brix: keep current if already typed, else 16
+      if (!String(brixEl.value).trim()) brixEl.value = "16";
+    } else {
+      fieldBrix.style.display = "none";
+      fieldPPG.style.display = "";
+      if (preset.ppg != null) ppgEl.value = String(preset.ppg);
+    }
+
+    // Nice default amount per type (optional convenience)
+    if (!String(amountEl.value).trim()) {
+      amountEl.value = (t === "fruit") ? "2" : "10";
+    }
+  }
+
+  typeEl.addEventListener("change", updateTypeUI);
+  updateTypeUI();
+
+  // ---------- Calculations ----------
+  function calcIngredientPoints(ing, eff) {
+    // Returns points in "gravity points * gallons" (i.e., total points contribution)
+    // We'll treat "points" as total points (like 46 points per lb in 1 gal -> 46 total points for 1 gal batch)
+    if (ing.type === "fruit") {
+      // fruit sugar equivalent
+      const fruitLb = ing.amountLb;
+      const brix = ing.brix;
+      const sugarLb = fruitLb * (brix / 100);
+      const points = sugarLb * SUGAR_PPG * eff;
+      return { points, detail: `Fruit sugar eq: ${fmt(sugarLb,2)} lb sugar @ 46 PPG` };
+    } else {
+      const points = ing.amountLb * ing.ppg * eff;
+      return { points, detail: `${fmt(ing.amountLb,2)} lb × ${ing.ppg} PPG` };
+    }
+  }
+
+  function recalc() {
+    const volUnit = volumeUnitEl.value;
+    const wtUnit = weightUnitEl.value;
+
+    const finalVolIn = toNum(finalVolEl.value);
+    const finalGal = volumeToGallons(finalVolIn, volUnit);
+
+    const startSG = toNum(startSgEl.value);
     const start = Number.isFinite(startSG) ? startSG : 1.000;
 
-    const PPG = toNum(ppg.value);
-    const effPct = toNum(document.getElementById("efficiency").value);
+    const effPct = toNum(effEl.value);
     const eff = (Number.isFinite(effPct) ? effPct : 100) / 100;
 
-    const targetFG = toNum(document.getElementById("target_fg").value);
-
-    if (!Number.isFinite(volumeIn) || volumeIn <= 0 || !Number.isFinite(targetOG) || targetOG <= start || !Number.isFinite(PPG) || PPG <= 0 || !Number.isFinite(eff) || eff <= 0) {
-      document.getElementById("out").innerHTML = `<div class="big">—</div><div class="small">Check inputs. Target OG must be greater than starting SG.</div>`;
+    if (!Number.isFinite(finalGal) || finalGal <= 0) {
+      summaryEl.innerHTML = `<div class="big">—</div><div class="small danger">Set a valid final batch volume.</div>`;
+      return;
+    }
+    if (!Number.isFinite(start) || start < 0.98 || start > 1.10) {
+      summaryEl.innerHTML = `<div class="big">—</div><div class="small danger">Starting SG looks off (usually 1.000).</div>`;
+      return;
+    }
+    if (!Number.isFinite(eff) || eff <= 0 || eff > 1.2) {
+      summaryEl.innerHTML = `<div class="big">—</div><div class="small danger">Yield % must be reasonable (like 80–100).</div>`;
       return;
     }
 
-    const volumeGal = (volUnit === "l") ? (volumeIn * GAL_PER_L) : volumeIn;
+    let totalPoints = 0;
+    let totalHoneyLb = 0;
+    let totalSugarEqLb = 0;
+    let tableRows = [];
 
-    const pointsNeeded = (targetOG - start) * 1000 * volumeGal; // total points
-    const poundsNeeded = pointsNeeded / (PPG * eff);
+    for (const ing of ingredients) {
+      const { points, detail } = calcIngredientPoints(ing, eff);
+      totalPoints += points;
 
-    const kgNeeded = poundsNeeded / LB_PER_KG;
+      if (ing.type === "honey") totalHoneyLb += ing.amountLb;
+      if (ing.type === "fruit") {
+        totalSugarEqLb += ing.amountLb * (ing.brix / 100);
+      }
 
-    // ABV (optional) using standard (OG-FG)*131.25
+      const amountDisplay = (ing.type === "fruit")
+        ? `${fmt(poundsToDisplay(ing.amountLb, wtUnit), 2)} ${wtUnit} (fruit)`
+        : `${fmt(poundsToDisplay(ing.amountLb, wtUnit), 2)} ${wtUnit}`;
+
+      const ppgOrBrix = (ing.type === "fruit") ? `${fmt(ing.brix, 1)} °Bx` : `${ing.ppg} PPG`;
+
+      tableRows.push(`
+        <tr>
+          <td>
+            <div><b>${ing.label}</b> ${ing.name ? `<span class="tag">${escapeHtml(ing.name)}</span>` : ""}</div>
+            ${ing.notes ? `<div class="smallmuted">${escapeHtml(ing.notes)}</div>` : ""}
+            <div class="smallmuted">${escapeHtml(detail)}</div>
+          </td>
+          <td class="right">${amountDisplay}</td>
+          <td class="right"><span class="mono">${fmt(points, 0)}</span></td>
+          <td class="right"><span class="mono">${ppgOrBrix}</span></td>
+          <td class="right"><button class="btn-secondary" data-remove="${ing.id}" style="width:auto;">Remove</button></td>
+        </tr>
+      `);
+    }
+
+    if (ingredients.length === 0) {
+      tableEl.innerHTML = `<tr><td colspan="5" class="smallmuted">No ingredients yet.</td></tr>`;
+      breakdownEl.innerHTML = `<div class="big">—</div><div class="small">Breakdown will appear after you add ingredients.</div>`;
+      summaryEl.innerHTML = `<div class="big">—</div><div class="small">Add ingredients to build your recipe.</div>`;
+      return;
+    }
+
+    tableEl.innerHTML = tableRows.join("");
+
+    // OG calc:
+    // start points in wort: (startSG - 1) * 1000 * gallons
+    const startPoints = (start - 1) * 1000 * finalGal;
+    const newTotalPoints = startPoints + totalPoints;
+    const estOG = 1 + (newTotalPoints / (1000 * finalGal));
+
+    // ABV estimate if FG provided
+    const targetFG = toNum(targetFgEl.value);
     let abvLine = "";
-    if (Number.isFinite(targetFG) && targetFG > 0.9 && targetFG < targetOG) {
-      const abv = (targetOG - targetFG) * 131.25;
+    if (Number.isFinite(targetFG) && targetFG > 0.9 && targetFG < estOG) {
+      const abv = (estOG - targetFG) * 131.25;
       abvLine = `<br/>Estimated ABV (if FG ${targetFG.toFixed(3)}): <span class="mono">${abv.toFixed(2)}%</span>`;
     }
 
-    const outWeight = (wtUnit === "kg")
-      ? `${fmt(kgNeeded, 2)} kg`
-      : `${fmt(poundsNeeded, 2)} lb`;
-
-    const altWeight = (wtUnit === "kg")
-      ? `${fmt(poundsNeeded, 2)} lb`
-      : `${fmt(kgNeeded, 2)} kg`;
-
-    document.getElementById("out").innerHTML = `
-      <div class="big">${outWeight}</div>
+    summaryEl.innerHTML = `
+      <div class="big">Estimated OG: <span class="mono">${estOG.toFixed(3)}</span></div>
       <div class="small">
-        That’s approximately <span class="mono">${altWeight}</span>.<br/>
-        Total points needed: <span class="mono">${pointsNeeded.toFixed(0)}</span> (using start SG ${start.toFixed(3)}).<br/>
-        Using PPG <span class="mono">${PPG}</span> at <span class="mono">${(eff*100).toFixed(0)}%</span> yield.
+        Final volume: <span class="mono">${fmt(finalVolIn,2)} ${volUnit}</span> (${fmt(finalGal,2)} gal)<br/>
+        Total points from ingredients: <span class="mono">${fmt(totalPoints,0)}</span> (at ${fmt(eff*100,0)}% yield)
         ${abvLine}
       </div>
     `;
+
+    breakdownEl.innerHTML = `
+      <div class="big">Totals</div>
+      <div class="small">
+        Total gravity points (added): <span class="mono">${fmt(totalPoints,0)}</span><br/>
+        Start SG contribution: <span class="mono">${fmt(startPoints,0)}</span> points (from ${start.toFixed(3)})<br/>
+        Total points in batch: <span class="mono">${fmt(newTotalPoints,0)}</span><br/>
+        Honey total: <span class="mono">${fmt(poundsToDisplay(totalHoneyLb, wtUnit),2)} ${wtUnit}</span><br/>
+        Fruit sugar equivalent (from Brix): <span class="mono">${fmt(poundsToDisplay(totalSugarEqLb, wtUnit),2)} ${wtUnit} sugar</span>
+      </div>
+    `;
+
+    // Wire up remove buttons
+    for (const btn of tableEl.querySelectorAll("button[data-remove]")) {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-remove");
+        ingredients = ingredients.filter(x => x.id !== id);
+        persist();
+        recalc();
+      });
+    }
+  }
+
+  // ---------- Add / clear ----------
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  function addIngredient() {
+    const wtUnit = weightUnitEl.value;
+    const t = typeEl.value;
+    const preset = TYPE_PRESETS[t];
+    if (!preset) return;
+
+    const amountIn = toNum(amountEl.value);
+    if (!Number.isFinite(amountIn) || amountIn <= 0) {
+      alert("Enter a valid amount.");
+      return;
+    }
+
+    const amountLb = weightToPounds(amountIn, wtUnit);
+    const name = nameEl.value.trim();
+    const notes = notesEl.value.trim();
+
+    const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+
+    if (t === "fruit") {
+      const brix = toNum(brixEl.value);
+      if (!Number.isFinite(brix) || brix < 0 || brix > 40) {
+        alert("Enter a reasonable fruit Brix (0–40).");
+        return;
+      }
+      ingredients.push({
+        id,
+        type: "fruit",
+        label: preset.label,
+        name,
+        notes,
+        amountLb,
+        brix
+      });
+    } else {
+      const ppg = toNum(ppgEl.value);
+      if (!Number.isFinite(ppg) || ppg <= 0 || ppg > 60) {
+        alert("Enter a reasonable PPG (like 30–50).");
+        return;
+      }
+      ingredients.push({
+        id,
+        type: t,
+        label: preset.label,
+        name,
+        notes,
+        amountLb,
+        ppg
+      });
+    }
+
+    // convenience: keep name/notes but clear amount
+    amountEl.value = "";
+    persist();
+    recalc();
+  }
+
+  document.getElementById("add_ing").addEventListener("click", addIngredient);
+
+  document.getElementById("clear_all").addEventListener("click", () => {
+    ingredients = [];
+    persist();
+    recalc();
   });
 
-  document.getElementById("reset").addEventListener("click", () => {
-    document.getElementById("volume_unit").value = "gal";
-    document.getElementById("weight_unit").value = "lb";
-    ingredient.value = "honey";
-    ppg.value = "35";
-    document.getElementById("efficiency").value = "100";
-    document.getElementById("volume").value = "5";
-    document.getElementById("target_og").value = "1.110";
-    document.getElementById("starting_sg").value = "";
-    document.getElementById("target_fg").value = "";
-    document.getElementById("out").innerHTML = `<div class="big">—</div><div class="small">Enter volume + target OG to compute fermentable needed.</div>`;
+  // ---------- Export / Import ----------
+  function persist() {
+    const data = {
+      v: 1,
+      settings: {
+        volume_unit: volumeUnitEl.value,
+        weight_unit: weightUnitEl.value,
+        final_volume: finalVolEl.value,
+        start_sg: startSgEl.value,
+        target_fg: targetFgEl.value,
+        efficiency: effEl.value
+      },
+      ingredients
+    };
+    localStorage.setItem("recipe_builder", JSON.stringify(data));
+  }
+
+  function restore() {
+    const raw = localStorage.getItem("recipe_builder");
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (data?.settings) {
+        volumeUnitEl.value = data.settings.volume_unit ?? volumeUnitEl.value;
+        weightUnitEl.value = data.settings.weight_unit ?? weightUnitEl.value;
+        finalVolEl.value = data.settings.final_volume ?? finalVolEl.value;
+        startSgEl.value = data.settings.start_sg ?? startSgEl.value;
+        targetFgEl.value = data.settings.target_fg ?? targetFgEl.value;
+        effEl.value = data.settings.efficiency ?? effEl.value;
+      }
+      if (Array.isArray(data?.ingredients)) ingredients = data.ingredients;
+    } catch {}
+  }
+
+  document.getElementById("export_json").addEventListener("click", () => {
+    persist();
+    const raw = localStorage.getItem("recipe_builder");
+    jsonBox.value = raw || "";
   });
+
+  document.getElementById("import_json").addEventListener("click", () => {
+    const raw = jsonBox.value.trim();
+    if (!raw) { alert("Paste JSON into the box first."); return; }
+    try {
+      const data = JSON.parse(raw);
+      if (!Array.isArray(data.ingredients)) throw new Error("No ingredients array");
+      // minimal validation
+      ingredients = data.ingredients;
+      if (data.settings) {
+        volumeUnitEl.value = data.settings.volume_unit ?? volumeUnitEl.value;
+        weightUnitEl.value = data.settings.weight_unit ?? weightUnitEl.value;
+        finalVolEl.value = data.settings.final_volume ?? finalVolEl.value;
+        startSgEl.value = data.settings.start_sg ?? startSgEl.value;
+        targetFgEl.value = data.settings.target_fg ?? targetFgEl.value;
+        effEl.value = data.settings.efficiency ?? effEl.value;
+      }
+      persist();
+      recalc();
+      alert("Imported!");
+    } catch (e) {
+      alert("Invalid JSON. " + e.message);
+    }
+  });
+
+  // Recalc triggers
+  for (const el of [volumeUnitEl, weightUnitEl, finalVolEl, startSgEl, targetFgEl, effEl]) {
+    el.addEventListener("input", () => { persist(); recalc(); });
+    el.addEventListener("change", () => { persist(); recalc(); });
+  }
+
+  // Initialize
+  restore();
+  updateTypeUI();
+  recalc();
 </script>
 </body>
 </html>
